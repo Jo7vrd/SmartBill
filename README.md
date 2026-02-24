@@ -1,2 +1,7 @@
 # SplitSmart
 Pernah nggak sih habis makan bareng temen tapi ribut gara-gara hitung tagihan? Siapa pesan apa, pajak berapa, service charge dibagi gimana ribet banget kalau harus input manual satu-satu. SplitSmart hadir buat nge-fix masalah itu. Cukup foto struk, AI kami langsung baca semua item dan harganya secara otomatis
+
+Kelompok 21
+Ketua Kelompok : Lisa Olivia
+Anggota 1 : Syahrul
+Anggota 2 : Jonathan Alvarado Panjaitan (23/515661/TK/56706)
