@@ -1,0 +1,41 @@
+name: SplitSmart Workflow
+
+# Menentukan kapan workflow ini berjalan
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Langkah 1: Mengambil kode dari repositori
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Langkah 2: Memastikan folder docs ada (penting untuk GitHub Pages)
+      - name: Check Docs Folder Presence
+        run: |
+          if [ -d "docs" ]; then
+            echo "Folder docs ditemukan. Deployment GitHub Pages aman."
+          else
+            echo "Error: Folder docs tidak ditemukan!"
+            exit 1
+          fi
+
+      # Langkah 3: Memastikan file index.md tidak kosong
+      - name: Verify Documentation File
+        run: |
+          if [ -s "docs/index.md" ]; then
+            echo "File index.md tersedia dan memiliki konten."
+          else
+            echo "Warning: index.md kosong atau tidak ditemukan!"
+            exit 1
+          fi
+
+      # Langkah 4: Simulasi build sukses
+      - name: Build Status
+        run: echo "Otomatisasi SplitSmart berhasil dijalankan!"
