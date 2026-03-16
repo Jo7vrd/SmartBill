@@ -1,0 +1,60 @@
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: smartbill-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "${DB_PORT}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: 
+      context: ./apps/backend/smartbill-backend
+      dockerfile: Dockerfile
+    container_name: smartbill-backend
+    ports:
+      - "${PORT}:8080"
+    environment:
+      - DB_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET}
+    volumes:
+      - ./apps/backend/smartbill-backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./apps/frontend/smartbill-ui
+      dockerfile: Dockerfile
+    container_name: smartbill-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/frontend/smartbill-ui:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+  ai-worker:
+    build:
+      context: ./apps/ai-worker
+      dockerfile: Dockerfile
+    container_name: smartbill-ai-worker
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./apps/ai-worker:/app
+
+volumes:
+  db_data:

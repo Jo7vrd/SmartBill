@@ -1,0 +1,7 @@
+.env
+node_modules/
+dist/
+dev-dist/
+bin/
+__pycache__
+*.exe
