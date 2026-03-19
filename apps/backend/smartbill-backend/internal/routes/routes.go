@@ -11,22 +11,22 @@ import (
 func Setup(app *fiber.App) {
 	api := app.Group("/api/v1")
 
-	// Public Routes (Gak butuh login)
 	api.Post("/register", handlers.Register)
 	api.Post("/login", handlers.Login)
 
-	// Endpoint Scan Struk
 	api.Post("/scan", middleware.Protected(), handlers.ProcessReceipt)
 
-	// Health Check
 	api.Get("/health", middleware.Protected(), func(c *fiber.Ctx) error {
 		return c.SendString("OK")
 	})
 
-	// Rute untuk Room Management
 	api.Get("/rooms/:roomCode", handlers.GetRoomByCode)
-	api.Post("/rooms", handlers.CreateRoom)
 	api.Post("/rooms/:roomCode/join", handlers.JoinRoom)
+
+	api.Post("/rooms", middleware.Protected(), handlers.CreateRoom)
+	api.Post("/rooms/:code/lock", middleware.Protected(), handlers.LockRoom)
+	api.Get("/rooms", middleware.Protected(), handlers.GetUserRooms)
+	api.Post("/rooms/:code/join-self", middleware.Protected(), handlers.JoinSelf)
 
 	app.Use("/ws", func(c *fiber.Ctx) error {
 		if fiberws.IsWebSocketUpgrade(c) {

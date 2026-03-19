@@ -22,6 +22,7 @@ export interface Member {
   color: string
   isHost: boolean
   hasPaid: boolean
+  userId: string
 }
 
 export interface BillItem {

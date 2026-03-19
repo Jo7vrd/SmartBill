@@ -49,7 +49,8 @@ export default defineConfig({
     port: 5173,
     allowedHosts: [
       'pope-objectives-strips-hiking.trycloudflare.com',
-      '192.168.1.108'
+      '192.168.1.108',
+      'smarbill.shahwul.men'
     ]
   }
 })

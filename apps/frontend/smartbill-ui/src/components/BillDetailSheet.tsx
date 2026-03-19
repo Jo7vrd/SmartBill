@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Bill, BillItem } from '../types'
 import { AVATAR_UNSELECTED } from '../utils/member'
 import { useLiveSplit } from '../hooks/useLiveSplit'
+import { authService } from '../services/authService'
 
 interface Props {
     bill: Bill | null
@@ -9,14 +10,16 @@ interface Props {
 }
 
 export default function BillDetailSheet({ bill, onClose }: Props) {
-    const { items, members, addMember, toggleClaim, deleteItem, updateItemName, roomCode, togglePaidWS, editMemberWS, deleteMemberWS } = useLiveSplit(bill)
+    const { items, members, addMember, toggleClaim, deleteItem, updateItemName, roomCode, togglePaidWS, editMemberWS, deleteMemberWS, lockRoom } = useLiveSplit(bill)
 
-    // State UI
+
+    const currentUser = authService.getUser()
+    const hostMember = members.find(m => m.isHost)
+    const isMeHost = currentUser && hostMember && hostMember.userId === currentUser.id
+
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
     const [copied, setCopied] = useState(false)
-
-    // State buat nambahin/edit member
     const [isAddingMember, setIsAddingMember] = useState(false)
     const [newMemberName, setNewMemberName] = useState('')
     const [editingMemberId, setEditingMemberId] = useState<string | null>(null)
@@ -33,7 +36,6 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
 
     if (!bill) return null
 
-    // Handle Edit Item UI
     const startEdit = (item: BillItem) => {
         setEditingId(item.id)
         setEditingName(item.name)
@@ -44,14 +46,12 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
         setEditingId(null)
     }
 
-    // Share UI
     const handleShare = () => {
         navigator.clipboard.writeText(`${roomCode}`)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
     }
 
-    // Kalkulasi matematika UI
     const memberTotals = members.map((m) => {
         const total = items.reduce((acc, item) => {
             if (item.assignedTo.includes(m.id)) {
@@ -61,6 +61,38 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
         }, 0)
         return { member: m, total }
     })
+
+    const handleCompleteAndShare = async () => {
+        const success = await lockRoom()
+        if (!success) return
+
+        let text = `🧾 *Rekap Tagihan: ${bill.name}*\n`
+        text += `📅 ${bill.date}\n\n`
+
+        memberTotals.forEach(({ member, total }) => {
+            const status = member.hasPaid ? '✅ Lunas' : '💸 Belum bayar'
+            text += `👤 *${member.name}*: Rp ${total.toLocaleString('id-ID')} (${status})\n`
+        })
+
+        const grandTotal = items.reduce((acc, item) => acc + item.price, 0)
+        text += `\n💰 *Total Semua: Rp ${grandTotal.toLocaleString('id-ID')}*\n`
+        text += `🔗 Cek detail: https://smartbill.shahwul.men\n`
+
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: `Tagihan ${bill.name}`,
+                    text: text,
+                })
+            } catch (err) {
+                console.log('Share dibatalkan', err)
+            }
+        } else {
+            navigator.clipboard.writeText(text)
+            alert('✅ Room Dikunci & Rekap berhasil disalin ke clipboard! Tinggal Paste di WA.')
+        }
+        onClose()
+    }
 
     return (
         <>
@@ -150,8 +182,12 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                         </div>
                                     </button>
 
-                                    {/* Action Buttons tetap diluar button utama */}
-                                    {!member.isHost && (
+                                    {/* Action Buttons: 
+                                        CUMA MUNCUL JIKA: 
+                                        1. Aku adalah Host (isMeHost)
+                                        2. Yang mau dihapus BUKAN Host (!member.isHost) 
+                                    */}
+                                    {isMeHost && !member.isHost && (
                                         <div className="flex flex-col gap-1 border-l border-black/10 pl-2 ml-1">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); setEditingMemberId(member.id); setEditingMemberName(member.name) }}
@@ -277,7 +313,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                     </div>
 
                     {/* CTA */}
-                    <button className="w-full mt-5 bg-[#1a5336] text-white font-sans font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform">
+                    <button onClick={handleCompleteAndShare} className="w-full mt-5 bg-[#1a5336] text-white font-sans font-semibold py-4 rounded-2xl active:scale-[0.98] transition-transform">
                         ✓ Selesai & Bagikan
                     </button>
 

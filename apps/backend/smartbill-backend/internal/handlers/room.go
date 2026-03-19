@@ -134,7 +134,6 @@ func JoinRoom(c *fiber.Ctx) error {
 	})
 }
 
-// --- GET ROOM DETAIL ---
 func GetRoomByCode(c *fiber.Ctx) error {
 	roomCode := c.Params("roomCode")
 	var room models.Transaction
@@ -151,4 +150,94 @@ func GetRoomByCode(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(room)
+}
+
+func LockRoom(c *fiber.Ctx) error {
+	roomCode := c.Params("code")
+	var room models.Transaction
+
+	if err := models.DB.Where("room_code = ?", roomCode).First(&room).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Room tidak ditemukan"})
+	}
+
+	room.Status = "settled"
+	if err := models.DB.Save(&room).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal mengunci room"})
+	}
+
+	return c.JSON(fiber.Map{
+		"message": "Room berhasil dikunci",
+		"status":  room.Status,
+	})
+}
+
+func GetUserRooms(c *fiber.Ctx) error {
+	userIDVal := c.Locals("user_id")
+	if userIDVal == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+
+	userUUID, err := uuid.Parse(userIDVal.(string))
+	if err != nil {
+		return c.Status(400).JSON(fiber.Map{"error": "Format User ID di token salah"})
+	}
+
+	var rooms []models.Transaction
+
+	err = models.DB.
+		Joins("JOIN transaction_members ON transaction_members.transaction_id = transactions.id").
+		Where("transaction_members.user_id = ?", userUUID).
+		Where("transaction_members.deleted_at IS NULL").
+		Order("transactions.created_at DESC").
+		Find(&rooms).Error
+
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal menarik riwayat tagihan"})
+	}
+
+	return c.Status(200).JSON(rooms)
+}
+
+func JoinSelf(c *fiber.Ctx) error {
+	roomCode := c.Params("code")
+
+	userIDVal := c.Locals("user_id")
+	if userIDVal == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Unauthorized"})
+	}
+	userUUID := uuid.MustParse(userIDVal.(string))
+
+	var user models.User
+	if err := models.DB.Select("name").Where("id = ?", userUUID).First(&user).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "User tidak ditemukan"})
+	}
+	var room models.Transaction
+	if err := models.DB.Where("room_code = ?", roomCode).First(&room).Error; err != nil {
+		return c.Status(404).JSON(fiber.Map{"error": "Room tidak ditemukan atau kode salah"})
+	}
+
+	if room.Status != "splitting" {
+		return c.Status(400).JSON(fiber.Map{"error": "Sesi split bill ini sudah dikunci/selesai"})
+	}
+	var existingMember models.TransactionMember
+	if err := models.DB.Where("transaction_id = ? AND user_id = ?", room.ID, userUUID).First(&existingMember).Error; err == nil {
+		return c.Status(200).JSON(fiber.Map{"message": "Sudah bergabung sebelumnya"})
+	}
+
+	var currentMemberCount int64
+	models.DB.Model(&models.TransactionMember{}).Where("transaction_id = ?", room.ID).Count(&currentMemberCount)
+
+	newMember := models.TransactionMember{
+		TransactionID: room.ID,
+		Name:          user.Name,
+		IsHost:        false,
+		ColorCode:     assignColor(int(currentMemberCount)),
+		UserID:        &userUUID,
+	}
+
+	if err := models.DB.Create(&newMember).Error; err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal bergabung ke room"})
+	}
+
+	return c.Status(200).JSON(fiber.Map{"message": "Berhasil join sebagai member resmi!"})
 }

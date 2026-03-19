@@ -2,41 +2,76 @@ import { useState, useEffect } from 'react'
 import BillCard from '../components/BillCard'
 import BillDetailSheet from '../components/BillDetailSheet'
 import type { Bill } from '../types'
-import { fetchBillFromBackend } from '../services/billService' // 🌟 Import API service kita
+import { fetchBillFromBackend, fetchUserBills, joinRoomSelf } from '../services/billService'
+import { authService } from '../services/authService'
 
 interface Props {
   onScan: () => void
 }
 
 export default function Home({ onScan }: Props) {
-  // State UI
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
 
-  // State Data dari Backend
   const [bills, setBills] = useState<Bill[]>([])
+  const [myDebt, setMyDebt] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
+
+  const currentUser = authService.getUser()
+  const userInitials = currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : '👤'
+
+  const [isJoining, setIsJoining] = useState(false)
+  const [roomCodeInput, setRoomCodeInput] = useState('')
 
   const loadBills = async () => {
     setIsLoading(true)
-    const [room1, room2] = await Promise.all([
-      fetchBillFromBackend('WSR01'),
-      fetchBillFromBackend('KPK02')
-    ])
 
-    const loadedBills: Bill[] = []
-    if (room1) loadedBills.push(room1)
-    if (room2) loadedBills.push(room2)
+    const userHistory = await fetchUserBills()
+    setBills(userHistory)
 
-    setBills(loadedBills)
+    const activeRooms = userHistory.filter(b => b.status === 'splitting')
+    let totalHutangku = 0
+
+    if (activeRooms.length > 0 && currentUser?.id) {
+      const fullActiveBills = await Promise.all(
+        activeRooms.map(b => fetchBillFromBackend(b.roomCode))
+      )
+
+      fullActiveBills.forEach(fullBill => {
+        if (!fullBill) return
+
+        const me = fullBill.members.find(m => m.userId === currentUser.id)
+
+        if (me && !me.hasPaid) {
+          let utangDiRoomIni = 0
+
+          fullBill.items.forEach(item => {
+            if (item.assignedTo.includes(me.id)) {
+              utangDiRoomIni += item.price / item.assignedTo.length
+            }
+          })
+
+          totalHutangku += utangDiRoomIni
+        }
+      })
+    }
+
+    setMyDebt(totalHutangku)
     setIsLoading(false)
   }
 
-  // Panggil saat halaman pertama dibuka
   useEffect(() => {
     loadBills()
   }, [])
 
-  // Kalkulasi dinamis buat Hero Card (Biar angkanya nggak hardcode)
+  const handleOpenBill = async (roomCode: string) => {
+    const fullBillData = await fetchBillFromBackend(roomCode)
+    if (fullBillData) {
+      setSelectedBill(fullBillData)
+    } else {
+      alert('Yahh, room tidak ditemukan atau kode salah cuy!')
+    }
+  }
+
   const activeBills = bills.filter(b => b.status === 'splitting')
   const totalUnpaid = activeBills.reduce((sum, bill) => sum + bill.amount, 0)
 
@@ -46,8 +81,10 @@ export default function Home({ onScan }: Props) {
       {/* Navbar */}
       <div className="relative flex justify-center items-center px-6 pt-14 pb-3">
         <span className="text-[30px] font-serif font-bold tracking-tight">SmartBill</span>
-        <div className="absolute right-6 w-10 h-10 rounded-full bg-emerald-700 flex items-center justify-center text-white text-sm font-bold shadow-md">
-          JA
+        <div className="absolute right-6 w-10 h-10 rounded-full bg-emerald-700 flex items-center justify-center text-white text-sm font-bold shadow-md cursor-pointer" onClick={() => {
+          if (confirm('Mau logout cuy?')) authService.logout()
+        }}>
+          {userInitials}
         </div>
       </div>
 
@@ -62,14 +99,69 @@ export default function Home({ onScan }: Props) {
         <div className="flex gap-3">
           <div className="flex-1 bg-white/10 rounded-xl p-3">
             <p className="text-[10px] opacity-65 uppercase tracking-wide mb-1">Kamu bayar</p>
-            {/* Angka ini nanti bisa dihitung dari total split user yang login */}
-            <p className="font-mono font-medium text-base">Rp 31k</p>
+            <p className="font-mono font-medium text-base">
+              Rp {myDebt > 0 ? (myDebt / 1000).toLocaleString('id-ID') + 'k' : '0'}
+            </p>
           </div>
           <div className="flex-1 bg-white/10 rounded-xl p-3">
             <p className="text-[10px] opacity-65 uppercase tracking-wide mb-1">Tagihan aktif</p>
             <p className="font-mono font-medium text-base">{activeBills.length} tagihan</p>
           </div>
         </div>
+      </div>
+
+      {/* Section Gabung Room */}
+      <div className="px-4 mt-6">
+        {isJoining ? (
+          <div className="flex items-center gap-2 p-1.5 bg-gray-50 border border-emerald-700/30 rounded-2xl shadow-inner animate-fade-in">
+            <input
+              autoFocus
+              type="text"
+              placeholder="Ketik 6 digit kode..."
+              maxLength={6}
+              value={roomCodeInput}
+              onChange={(e) => setRoomCodeInput(e.target.value.toUpperCase())}
+              className="flex-1 bg-transparent px-3 py-2 text-sm font-bold font-mono outline-none text-dark placeholder-gray-400 uppercase tracking-widest"
+            />
+            <button
+              onClick={async () => {
+                if (roomCodeInput.trim().length >= 5) {
+                  const code = roomCodeInput.trim().toUpperCase()
+
+                  // 1. Gabung dulu ke Database Go secara resmi
+                  const isSuccess = await joinRoomSelf(code)
+
+                  if (isSuccess) {
+                    // 2. Refresh daftar riwayat di background biar tagihannya muncul di "Terbaru"
+                    loadBills()
+
+                    // 3. Tarik data lengkapnya dan buka Sheet Modal!
+                    handleOpenBill(code)
+
+                    setIsJoining(false)
+                    setRoomCodeInput('')
+                  }
+                }
+              }}
+              className="bg-[#1a5336] text-white px-5 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform shadow-md"
+            >
+              Masuk
+            </button>
+            <button
+              onClick={() => { setIsJoining(false); setRoomCodeInput('') }}
+              className="px-3 text-gray-400 hover:text-red-500 font-bold text-lg"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setIsJoining(true)}
+            className="w-full flex items-center justify-center gap-2 py-4 border-2 border-dashed border-gray-300 rounded-2xl text-gray-500 font-semibold text-sm hover:bg-gray-50 hover:border-[#1a5336]/40 hover:text-[#1a5336] transition-all active:scale-[0.98]"
+          >
+            <span className="text-lg">🔗</span> Gabung Tagihan Teman
+          </button>
+        )}
       </div>
 
       {/* Tagihan Terbaru */}
@@ -91,7 +183,7 @@ export default function Home({ onScan }: Props) {
               <BillCard
                 key={b.id}
                 bill={b}
-                onClick={() => setSelectedBill(b)}
+                onClick={() => handleOpenBill(b.roomCode)}
               />
             ))
           ) : (

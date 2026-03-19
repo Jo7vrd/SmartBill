@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react'
+import { useRef, useCallback, useState, useEffect } from 'react'
 import Webcam from 'react-webcam'
 import { X, Zap, Image as ImageIcon } from 'lucide-react'
 
@@ -9,7 +9,47 @@ interface Props {
 
 export default function ScanStruk({ onBack, onCapture }: Props) {
     const webcamRef = useRef<Webcam>(null)
+    const fileInputRef = useRef<HTMLInputElement>(null)
     const [flashOn, setFlashOn] = useState(false)
+
+    useEffect(() => {
+        const toggleTorch = async () => {
+            if (webcamRef.current && webcamRef.current.video && webcamRef.current.video.srcObject) {
+                const stream = webcamRef.current.video.srcObject as MediaStream
+                const track = stream.getVideoTracks()[0]
+
+                if (track) {
+                    try {
+                        const capabilities = track.getCapabilities() as any
+                        if (capabilities.torch) {
+                            await track.applyConstraints({
+                                advanced: [{ torch: flashOn }]
+                            } as any)
+                        } else if (flashOn) {
+                            alert("Yah, Flash nggak didukung di kamera ini cuy.")
+                            setFlashOn(false) // Matiin lagi state-nya
+                        }
+                    } catch (err) {
+                        console.error("Gagal nyalain flash:", err)
+                    }
+                }
+            }
+        }
+
+        toggleTorch()
+    }, [flashOn])
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0]
+        if (file) {
+            const reader = new FileReader()
+            reader.onloadend = () => {
+                const base64String = reader.result as string
+                onCapture(base64String) // Langsung kirim ke fungsi utama!
+            }
+            reader.readAsDataURL(file)
+        }
+    }
 
     const capture = useCallback(() => {
         const imageSrc = webcamRef.current?.getScreenshot()
@@ -62,8 +102,7 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
                 {/* Scanner Frame */}
                 <div className="flex-1 flex items-center justify-center px-10">
                     <div className="relative w-full aspect-[3/4]">
-
-                        {/* Corner brackets — accent color */}
+                        {/* Corner brackets */}
                         <span className="absolute top-0 left-0 w-8 h-8 border-t-[3px] border-l-[3px] border-accent rounded-tl-sm" />
                         <span className="absolute top-0 right-0 w-8 h-8 border-t-[3px] border-r-[3px] border-accent rounded-tr-sm" />
                         <span className="absolute bottom-0 left-0 w-8 h-8 border-b-[3px] border-l-[3px] border-accent rounded-bl-sm" />
@@ -81,7 +120,21 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
 
                 {/* Bottom Controls */}
                 <div className="pb-10 pt-6 px-10 flex justify-between items-center">
-                    <button className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center active:scale-95 transition-transform">
+
+                    {/* Input File Rahasia (Disembunyikan) */}
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                    />
+
+                    {/* Tombol Buka Galeri */}
+                    <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center active:scale-95 transition-transform hover:bg-white/20"
+                    >
                         <ImageIcon size={20} />
                     </button>
 

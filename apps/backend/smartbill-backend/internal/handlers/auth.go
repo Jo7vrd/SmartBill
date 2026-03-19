@@ -22,12 +22,25 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Format input salah, cuy!"})
 	}
 
-	_, err := services.CreateUser(input.Name, input.Email, input.Password)
+	user, err := services.CreateUser(input.Name, input.Email, input.Password)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	return c.Status(201).JSON(fiber.Map{"message": "Registrasi sukses!"})
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"user_id": user.ID,
+		"exp":     time.Now().Add(time.Hour * 72).Unix(),
+	})
+
+	t, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal generate token"})
+	}
+
+	return c.JSON(fiber.Map{
+		"token": t,
+		"user":  user,
+	})
 }
 
 func Login(c *fiber.Ctx) error {

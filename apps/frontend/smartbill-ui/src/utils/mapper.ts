@@ -10,6 +10,7 @@ export function mapMember(raw: any): Member {
         color: raw.color_code,
         isHost: raw.is_host,
         hasPaid: raw.has_paid,
+        userId: raw.user_id
     }
 }
 

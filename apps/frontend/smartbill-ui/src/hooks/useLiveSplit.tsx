@@ -20,7 +20,8 @@ export function useLiveSplit(bill: Bill | null) {
             }
         })
 
-        const socketUrl = `ws://localhost:8080/ws/room/${roomCode}`
+        const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080'
+        const socketUrl = `${WS_URL}/ws/room/${roomCode}`
         ws.current = new WebSocket(socketUrl)
         ws.current.onopen = () => console.log('✅ Connected to Live Split Room:', roomCode)
 
@@ -111,5 +112,30 @@ export function useLiveSplit(bill: Bill | null) {
     const deleteItem = useCallback((itemId: string) => setItems((prev) => prev.filter((item) => item.id !== itemId)), [])
     const updateItemName = useCallback((itemId: string, newName: string) => setItems((prev) => prev.map(i => i.id === itemId ? { ...i, name: newName } : i)), [])
 
-    return { items, members, addMember, toggleClaim, deleteItem, updateItemName, roomCode, togglePaidWS, editMemberWS, deleteMemberWS }
+    const lockRoom = async () => {
+        if (!roomCode) return false
+        try {
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1'
+            const res = await fetch(`${API_URL}/rooms/${roomCode}/lock`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            })
+
+            if (res.ok) {
+                if (ws.current?.readyState === WebSocket.OPEN) {
+                    ws.current.send(JSON.stringify({ action: 'refresh' }))
+                }
+                return true
+            } else {
+                const data = await res.json()
+                alert(`Gagal ngunci room: ${data.error}`)
+                return false
+            }
+        } catch (error) {
+            console.error(error)
+            return false
+        }
+    }
+
+    return { items, members, addMember, toggleClaim, deleteItem, updateItemName, roomCode, togglePaidWS, editMemberWS, deleteMemberWS, lockRoom }
 }
