@@ -1,8 +1,20 @@
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { Bill, BillItem } from '../types'
 import { AVATAR_UNSELECTED } from '../utils/member'
 import { useLiveSplit } from '../hooks/useLiveSplit'
 import { authService } from '../services/authService'
+
+const CATEGORY_EMOJIS: Record<string, string> = {
+    "Makan": "🍱",
+    "Belanja": "🛒",
+    "Kebersihan": "🧼",
+    "Tagihan": "🧾",
+    "Kesehatan": "💊",
+    "Hiburan": "🎬",
+    "Pendidikan": "📚",
+    "Transportasi": "🚕",
+    "Lain-lain": "📦"
+}
 
 interface Props {
     bill: Bill | null
@@ -10,7 +22,10 @@ interface Props {
 }
 
 export default function BillDetailSheet({ bill, onClose }: Props) {
-    const { items, members, addMember, toggleClaim, deleteItem, updateItemName, roomCode, togglePaidWS, editMemberWS, deleteMemberWS, lockRoom } = useLiveSplit(bill)
+    const { items, members, roomCode,
+        addMember, togglePaidWS, editMemberWS, deleteMemberWS,
+        toggleClaim, deleteItemWS, addItemWS, updateItemCategory, updateItemNameWS, updateItemPriceWS,
+        lockRoom } = useLiveSplit(bill)
 
 
     const currentUser = authService.getUser()
@@ -19,6 +34,8 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
 
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
+    const [editingPrice, setEditingPrice] = useState<number | string>('')
+
     const [copied, setCopied] = useState(false)
     const [isAddingMember, setIsAddingMember] = useState(false)
     const [newMemberName, setNewMemberName] = useState('')
@@ -39,10 +56,21 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
     const startEdit = (item: BillItem) => {
         setEditingId(item.id)
         setEditingName(item.name)
+        setEditingPrice(item.price)
     }
 
     const saveEdit = () => {
-        if (editingId) updateItemName(editingId, editingName)
+        if (editingId) {
+            const originalItem = items.find(i => i.id === editingId)
+
+            if (originalItem?.name !== editingName) {
+                updateItemNameWS(editingId, editingName)
+            }
+            const numPrice = Number(editingPrice)
+            if (!isNaN(numPrice) && originalItem?.price !== numPrice) {
+                updateItemPriceWS(editingId, numPrice)
+            }
+        }
         setEditingId(null)
     }
 
@@ -140,7 +168,6 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                         background: paid ? member.color : 'transparent',
                                     }}
                                 >
-                                    {/* 🌟 FIX: BUNGKUS AVATAR DAN NAMA DALAM 1 BUTTON BESAR */}
                                     <button
                                         onClick={() => togglePaidWS(member.id)}
                                         className="flex items-center gap-2 text-left active:scale-95 transition-transform"
@@ -167,7 +194,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                                             setEditingMemberId(null)
                                                         }
                                                     }}
-                                                    onClick={(e) => e.stopPropagation()} // Biar pas ngetik ga ke-toggle lunas
+                                                    onClick={(e) => e.stopPropagation()}
                                                     className="w-full bg-transparent text-xs font-semibold outline-none border-b border-black/20"
                                                     style={{ color: paid ? 'white' : '#0E1311' }}
                                                 />
@@ -182,11 +209,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                         </div>
                                     </button>
 
-                                    {/* Action Buttons: 
-                                        CUMA MUNCUL JIKA: 
-                                        1. Aku adalah Host (isMeHost)
-                                        2. Yang mau dihapus BUKAN Host (!member.isHost) 
-                                    */}
+                                    {/* Action Buttons */}
                                     {isMeHost && !member.isHost && (
                                         <div className="flex flex-col gap-1 border-l border-black/10 pl-2 ml-1">
                                             <button
@@ -236,44 +259,102 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                     </div>
 
                     {/* Item list */}
-                    <div className="mt-2">
+                    <div className="mt-2.5">
                         {items.map((item) => (
-                            <div key={item.id} className="py-3 border-b border-black/5 last:border-0">
-                                <div className="flex justify-between items-start mb-2 gap-2">
-                                    {editingId === item.id ? (
-                                        <input
-                                            autoFocus
-                                            value={editingName}
-                                            onChange={(e) => setEditingName(e.target.value)}
-                                            onBlur={saveEdit}
-                                            onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                                            className="flex-1 text-sm font-sans font-medium text-dark bg-white border border-primary/30 rounded-lg px-2 py-1 outline-none"
-                                        />
-                                    ) : (
-                                        <span className="flex-1 text-sm font-sans font-medium text-dark" onDoubleClick={() => startEdit(item)}>
-                                            {item.name}
-                                        </span>
-                                    )}
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <span className="font-mono font-medium text-sm text-dark/60">{item.price.toLocaleString('id-ID')}</span>
-                                        <button onClick={() => startEdit(item)} className="text-dark/30 hover:text-primary transition-colors text-xs px-1">✎</button>
-                                        <button onClick={() => deleteItem(item.id)} className="text-dark/30 hover:text-red-500 transition-colors text-xs px-1">✕</button>
+                            <div key={item.id} className="py-2 border-b border-black/5 last:border-0">
+
+                                {/* Baris atas: emoji + nama + harga + aksi */}
+                                <div className="flex items-center gap-3 mb-1.5">
+
+                                    {/* Emoji kategori */}
+                                    <div className="relative flex-shrink-0">
+                                        <div className="w-8 h-8 rounded-xl bg-black/5 flex items-center justify-center text-sm">
+                                            {CATEGORY_EMOJIS[item.category?.name || 'Lain-lain'] || '📦'}
+                                        </div>
+                                        {isMeHost && (
+                                            <select
+                                                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                                                value={item.category?.name || 'Lain-lain'}
+                                                onChange={(e) => updateItemCategory(item.id, e.target.value)}
+                                            >
+                                                {Object.keys(CATEGORY_EMOJIS).map(cat => (
+                                                    <option key={cat} value={cat}>{CATEGORY_EMOJIS[cat]} {cat}</option>
+                                                ))}
+                                            </select>
+                                        )}
                                     </div>
+
+                                    {/* Nama — mode edit vs view */}
+                                    {editingId === item.id ? (
+                                        <div className="flex-1 flex gap-2 min-w-0">
+                                            <input
+                                                autoFocus
+                                                value={editingName}
+                                                onChange={(e) => setEditingName(e.target.value)}
+                                                className="flex-1 min-w-0 text-sm font-medium text-dark bg-white border border-primary/30 rounded-xl px-3 py-1.5 outline-none"
+                                                placeholder="Nama item"
+                                            />
+                                            <input
+                                                type="number"
+                                                value={editingPrice}
+                                                onChange={(e) => setEditingPrice(e.target.value)}
+                                                onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
+                                                className="w-28 font-mono text-sm text-dark bg-white border border-primary/30 rounded-xl px-3 py-1.5 outline-none"
+                                                placeholder="Harga"
+                                            />
+                                            <button
+                                                onClick={saveEdit}
+                                                className="bg-primary text-white text-xs font-bold px-3 rounded-xl active:scale-95 transition-transform"
+                                            >
+                                                ✓
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span
+                                                className="flex-1 text-sm font-medium text-dark truncate"
+                                                onDoubleClick={() => startEdit(item)}
+                                            >
+                                                {item.name}
+                                            </span>
+                                            <div className="flex items-center gap-3 flex-shrink-0">
+                                                <span className="font-mono text-sm font-medium text-dark/50">
+                                                    {item.price.toLocaleString('id-ID')}
+                                                </span>
+                                                {isMeHost && (
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            onClick={() => startEdit(item)}
+                                                            className="w-6 h-6 rounded-lg bg-black/5 flex items-center justify-center text-dark/40 hover:text-primary hover:bg-primary/10 transition-all text-xs"
+                                                        >
+                                                            ✎
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteItemWS(item.id)}
+                                                            className="w-6 h-6 rounded-lg bg-black/5 flex items-center justify-center text-dark/40 hover:text-red-500 hover:bg-red-50 transition-all text-xs"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
-                                {/* Avatar toggle klaim */}
-                                <div className="flex gap-2">
+                                {/* Baris bawah: avatar klaim */}
+                                <div className="flex gap-1.5 pl-11">
                                     {members.map((m) => {
                                         const selected = item.assignedTo.includes(m.id)
                                         return (
                                             <button
                                                 key={m.id}
                                                 onClick={() => toggleClaim(item.id, m.id)}
-                                                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-all active:scale-90"
+                                                title={m.name}
+                                                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold transition-all active:scale-90"
                                                 style={{
                                                     background: selected ? m.color : AVATAR_UNSELECTED,
-                                                    color: selected ? 'white' : '#aaa',
-                                                    borderColor: selected ? m.color : 'transparent',
+                                                    color: selected ? 'white' : '#bbb',
                                                 }}
                                             >
                                                 {m.initials}
@@ -281,18 +362,34 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                         )
                                     })}
                                 </div>
+
                             </div>
                         ))}
                     </div>
 
+                    <div className="mb-4">
+                        {isMeHost && (
+                            <button
+                                onClick={() => {
+                                    const newId = addItemWS()
+                                    setEditingId(newId)
+                                    setEditingName('')
+                                    setEditingPrice('')
+                                }}
+                                className="w-full mt-3 py-3 border-2 border-dashed border-[#1a5336]/30 text-[#1a5336] rounded-xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#1a5336]/5 transition-colors active:scale-[0.98]"
+                            >
+                                <span className="text-lg leading-none">+</span> Tambah Menu Manual
+                            </button>
+                        )}
+                    </div>
+
                     {/* Summary */}
-                    <div className="mt-4 pt-4 border-t border-black/10">
+                    <div className="mt-2 pt-4 border-t border-black/10">
                         {memberTotals.map(({ member, total }) => (
                             <div key={member.id} className="flex items-center justify-between py-1.5">
                                 <div className="flex items-center gap-2">
                                     <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: member.color }} />
                                     <span className="text-sm font-sans text-dark">{member.name}</span>
-                                    {/* 🌟 DIAMBIL DARI MEMBER JUGA */}
                                     {member.hasPaid && (
                                         <span className="text-[10px] font-medium px-2 py-0.5 rounded-full text-white" style={{ background: member.color }}>
                                             Lunas

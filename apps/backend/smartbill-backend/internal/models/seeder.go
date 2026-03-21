@@ -19,13 +19,9 @@ func SeedDatabase() {
 	}
 
 	for _, cat := range categories {
-		var count int64
-		DB.Model(&Category{}).Where("name = ?", cat.Name).Count(&count)
-
-		if count == 0 {
-			if err := DB.Create(&cat).Error; err != nil {
-				log.Printf("Gagal seed kategori %s: %v", cat.Name, err)
-			}
+		// Kalau belum ada, bikin. Kalau udah ada, lewatin. Simpel!
+		if err := DB.Where("name = ?", cat.Name).FirstOrCreate(&cat).Error; err != nil {
+			log.Printf("Gagal seed kategori %s: %v", cat.Name, err)
 		}
 	}
 
@@ -75,10 +71,10 @@ func SeedMockData() {
 
 	// Bikin Items
 
-	i1 := TransactionItem{TransactionID: bill1.ID, CategoryID: catID, ItemName: "Nasi Goreng Spesial", Qty: 1, Price: 25000}
-	i2 := TransactionItem{TransactionID: bill1.ID, CategoryID: catID, ItemName: "Ayam Bakar", Qty: 1, Price: 32000}
-	i3 := TransactionItem{TransactionID: bill1.ID, CategoryID: catID, ItemName: "Gado-Gado", Qty: 1, Price: 22000}
-	i4 := TransactionItem{TransactionID: bill1.ID, CategoryID: catID, ItemName: "Es Teh x 3", Qty: 3, Price: 18000}
+	i1 := TransactionItem{TransactionID: bill1.ID, CategoryID: &catID, ItemName: "Nasi Goreng Spesial", Qty: 1, Price: 25000}
+	i2 := TransactionItem{TransactionID: bill1.ID, CategoryID: &catID, ItemName: "Ayam Bakar", Qty: 1, Price: 32000}
+	i3 := TransactionItem{TransactionID: bill1.ID, CategoryID: &catID, ItemName: "Gado-Gado", Qty: 1, Price: 22000}
+	i4 := TransactionItem{TransactionID: bill1.ID, CategoryID: &catID, ItemName: "Es Teh x 3", Qty: 3, Price: 18000}
 	DB.Create(&i1)
 	DB.Create(&i2)
 	DB.Create(&i3)
@@ -116,9 +112,9 @@ func SeedMockData() {
 	DB.Create(&km1)
 
 	// Items & Claims Kopi Kenangan
-	ki5 := TransactionItem{TransactionID: bill2.ID, CategoryID: catID, ItemName: "Kopi Susu", Qty: 1, Price: 32000}
-	ki6 := TransactionItem{TransactionID: bill2.ID, CategoryID: catID, ItemName: "Matcha Latte", Qty: 1, Price: 35000}
-	ki7 := TransactionItem{TransactionID: bill2.ID, CategoryID: catID, ItemName: "Croissant", Qty: 1, Price: 18000}
+	ki5 := TransactionItem{TransactionID: bill2.ID, CategoryID: &catID, ItemName: "Kopi Susu", Qty: 1, Price: 32000}
+	ki6 := TransactionItem{TransactionID: bill2.ID, CategoryID: &catID, ItemName: "Matcha Latte", Qty: 1, Price: 35000}
+	ki7 := TransactionItem{TransactionID: bill2.ID, CategoryID: &catID, ItemName: "Croissant", Qty: 1, Price: 18000}
 	DB.Create(&ki5)
 	DB.Create(&ki6)
 	DB.Create(&ki7)

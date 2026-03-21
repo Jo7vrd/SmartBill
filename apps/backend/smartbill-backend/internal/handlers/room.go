@@ -142,6 +142,7 @@ func GetRoomByCode(c *fiber.Ctx) error {
 		Preload("Members").
 		Preload("Items").
 		Preload("Items.Splits").
+		Preload("Items.Category").
 		Where("room_code = ?", roomCode).
 		First(&room).Error
 

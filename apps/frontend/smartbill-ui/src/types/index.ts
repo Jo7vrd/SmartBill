@@ -22,7 +22,7 @@ export interface Member {
   color: string
   isHost: boolean
   hasPaid: boolean
-  userId: string
+  userId?: string | null
 }
 
 export interface BillItem {
@@ -31,6 +31,10 @@ export interface BillItem {
   qty: number
   price: number
   assignedTo: string[]
+  category?: {
+    id: string
+    name: string
+  }
 }
 
 export interface Bill {

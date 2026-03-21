@@ -49,7 +49,11 @@ export const fetchBillFromBackend = async (roomCode: string): Promise<Bill | nul
                 name: item.item_name,
                 qty: item.qty,
                 price: item.price,
-                assignedTo: item.splits ? item.splits.map((split: any) => split.member_id) : []
+                assignedTo: item.splits ? item.splits.map((split: any) => split.member_id) : [],
+                category: item.category && item.category.id ? {
+                    id: item.category.id,
+                    name: item.category.name
+                } : undefined
             }))
         }
 

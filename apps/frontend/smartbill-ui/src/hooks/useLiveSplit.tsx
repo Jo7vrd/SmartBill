@@ -37,7 +37,6 @@ export function useLiveSplit(bill: Bill | null) {
                     return item
                 }))
             }
-
             if (msg.action === 'toggle_paid') {
                 setMembers(prev => prev.map(m => m.id === msg.member_id ? { ...m, hasPaid: !m.hasPaid } : m))
             }
@@ -48,6 +47,33 @@ export function useLiveSplit(bill: Bill | null) {
                 setMembers(prev => prev.filter(m => m.id !== msg.member_id))
                 setItems(prev => prev.map(item => ({ ...item, assignedTo: item.assignedTo.filter(id => id !== msg.member_id) })))
             }
+
+            if (msg.action === 'update_category') {
+                setItems(prev => prev.map(item =>
+                    item.id === msg.item_id ? { ...item, category: { id: "temp-id", name: msg.name } } : item
+                ))
+            }
+            if (msg.action === 'edit_item_name') {
+                setItems(prev => prev.map(item =>
+                    item.id === msg.item_id ? { ...item, name: msg.name } : item
+                ))
+            }
+            if (msg.action === 'edit_item_price') {
+                setItems(prev => prev.map(item =>
+                    item.id === msg.item_id ? { ...item, price: msg.price } : item
+                ))
+            }
+
+            if (msg.action === 'add_item') {
+                setItems(prev => {
+                    if (prev.find(i => i.id === msg.item_id)) return prev;
+                    return [...prev, { id: msg.item_id, name: msg.name, price: msg.price, qty: 1, assignedTo: [] }]
+                })
+            }
+            if (msg.action === 'delete_item') {
+                setItems(prev => prev.filter(i => i.id !== msg.item_id))
+            }
+
             if (msg.action === 'refresh') {
                 const updatedBill = await fetchBillFromBackend(roomCode!)
                 if (updatedBill) {
@@ -60,6 +86,9 @@ export function useLiveSplit(bill: Bill | null) {
         return () => { if (ws.current) ws.current.close() }
     }, [bill, roomCode])
 
+    // ==========================================
+    // ACTIONS: MEMBER
+    // ==========================================
     const addMember = async (name: string) => {
         if (!roomCode) return
         try {
@@ -72,7 +101,6 @@ export function useLiveSplit(bill: Bill | null) {
 
             if (res.ok) {
                 if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ action: 'refresh' }))
-
                 const updatedBill = await fetchBillFromBackend(roomCode)
                 if (updatedBill) setMembers(updatedBill.members)
             }
@@ -94,6 +122,10 @@ export function useLiveSplit(bill: Bill | null) {
         setItems(prev => prev.map(item => ({ ...item, assignedTo: item.assignedTo.filter(id => id !== memberId) })))
     }, [])
 
+
+    // ==========================================
+    // ACTIONS: ITEMS
+    // ==========================================
     const toggleClaim = useCallback((itemId: string, memberId: string) => {
         const item = items.find(i => i.id === itemId)
         if (!item) return
@@ -109,9 +141,61 @@ export function useLiveSplit(bill: Bill | null) {
         }))
     }, [items])
 
-    const deleteItem = useCallback((itemId: string) => setItems((prev) => prev.filter((item) => item.id !== itemId)), [])
-    const updateItemName = useCallback((itemId: string, newName: string) => setItems((prev) => prev.map(i => i.id === itemId ? { ...i, name: newName } : i)), [])
+    const deleteItemWS = useCallback((itemId: string) => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ action: 'delete_item', item_id: itemId }))
+        }
+        setItems((prev) => prev.filter((item) => item.id !== itemId))
+    }, [])
 
+    const addItemWS = useCallback(() => {
+        const newId = crypto.randomUUID()
+        const newItem: BillItem = {
+            id: newId,
+            name: '',
+            price: 0,
+            qty: 1,
+            assignedTo: []
+        }
+
+        if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({
+                action: 'add_item',
+                room_code: roomCode,
+                item_id: newId,
+                name: newItem.name,
+                price: newItem.price
+            }))
+        }
+        setItems(prev => [...prev, newItem])
+        return newId
+    }, [roomCode])
+
+    const updateItemCategory = useCallback((itemId: string, categoryName: string) => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ action: 'update_category', item_id: itemId, name: categoryName }))
+        }
+        setItems(prev => prev.map(item => item.id === itemId ? { ...item, category: { id: "temp-id", name: categoryName } } : item))
+    }, [])
+
+    const updateItemNameWS = useCallback((itemId: string, newName: string) => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ action: 'edit_item_name', item_id: itemId, name: newName }))
+        }
+        setItems(prev => prev.map(item => item.id === itemId ? { ...item, name: newName } : item))
+    }, [])
+
+    const updateItemPriceWS = useCallback((itemId: string, newPrice: number) => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ action: 'edit_item_price', item_id: itemId, price: newPrice }))
+        }
+        setItems(prev => prev.map(item => item.id === itemId ? { ...item, price: newPrice } : item))
+    }, [])
+
+
+    // ==========================================
+    // ACTIONS: ROOM
+    // ==========================================
     const lockRoom = async () => {
         if (!roomCode) return false
         try {
@@ -137,5 +221,10 @@ export function useLiveSplit(bill: Bill | null) {
         }
     }
 
-    return { items, members, addMember, toggleClaim, deleteItem, updateItemName, roomCode, togglePaidWS, editMemberWS, deleteMemberWS, lockRoom }
+    return {
+        items, members, roomCode,
+        addMember, togglePaidWS, editMemberWS, deleteMemberWS,
+        toggleClaim, deleteItemWS, addItemWS, updateItemCategory, updateItemNameWS, updateItemPriceWS,
+        lockRoom
+    }
 }

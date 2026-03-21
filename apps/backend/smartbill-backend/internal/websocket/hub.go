@@ -8,10 +8,12 @@ import (
 )
 
 type WSMessage struct {
-	Action   string `json:"action"`
-	ItemID   string `json:"item_id,omitempty"`
-	MemberID string `json:"member_id,omitempty"`
-	Name     string `json:"name,omitempty"`
+	Action   string  `json:"action"`
+	RoomCode string  `json:"room_code,omitempty"`
+	ItemID   string  `json:"item_id,omitempty"`
+	MemberID string  `json:"member_id,omitempty"`
+	Name     string  `json:"name,omitempty"`
+	Price    float64 `json:"price,omitempty"`
 }
 type Hub struct {
 	sync.RWMutex

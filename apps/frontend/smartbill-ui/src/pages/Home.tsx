@@ -5,11 +5,7 @@ import type { Bill } from '../types'
 import { fetchBillFromBackend, fetchUserBills, joinRoomSelf } from '../services/billService'
 import { authService } from '../services/authService'
 
-interface Props {
-  onScan: () => void
-}
-
-export default function Home({ onScan }: Props) {
+export default function Home() {
   const [selectedBill, setSelectedBill] = useState<Bill | null>(null)
 
   const [bills, setBills] = useState<Bill[]>([])
@@ -128,14 +124,10 @@ export default function Home({ onScan }: Props) {
                 if (roomCodeInput.trim().length >= 5) {
                   const code = roomCodeInput.trim().toUpperCase()
 
-                  // 1. Gabung dulu ke Database Go secara resmi
                   const isSuccess = await joinRoomSelf(code)
 
                   if (isSuccess) {
-                    // 2. Refresh daftar riwayat di background biar tagihannya muncul di "Terbaru"
                     loadBills()
-
-                    // 3. Tarik data lengkapnya dan buka Sheet Modal!
                     handleOpenBill(code)
 
                     setIsJoining(false)
@@ -173,7 +165,6 @@ export default function Home({ onScan }: Props) {
 
         <div className="flex flex-col gap-2">
           {isLoading ? (
-            // Skeleton Loading UI biar keliatan pro
             <div className="animate-pulse space-y-3">
               <div className="h-20 bg-gray-100 rounded-2xl w-full"></div>
               <div className="h-20 bg-gray-100 rounded-2xl w-full"></div>
@@ -190,24 +181,6 @@ export default function Home({ onScan }: Props) {
             <p className="text-center text-sm text-gray-400 mt-4">Belum ada tagihan nih cuy.</p>
           )}
         </div>
-      </div>
-
-      {/* Bottom Nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-black/5 flex items-center justify-around px-8 pt-3 pb-6">
-        <button className="flex flex-col items-center gap-1 text-xs font-medium text-emerald-700">
-          <span className="text-xl">🏠</span>
-          Home
-        </button>
-        <button
-          onClick={onScan}
-          className="w-14 h-14 bg-[#1a5336] rounded-2xl flex items-center justify-center text-white text-3xl -mt-4 shadow-lg shadow-emerald-900/40 active:scale-95 transition-transform"
-        >
-          +
-        </button>
-        <button className="flex flex-col items-center gap-1 text-xs font-medium text-gray-400">
-          <span className="text-xl">🕐</span>
-          Riwayat
-        </button>
       </div>
 
       {/* Sheet Modal */}

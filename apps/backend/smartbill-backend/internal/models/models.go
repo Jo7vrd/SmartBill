@@ -15,7 +15,9 @@ type Base struct {
 }
 
 func (base *Base) BeforeCreate(tx *gorm.DB) error {
-	base.ID = uuid.New()
+	if base.ID == uuid.Nil {
+		base.ID = uuid.New()
+	}
 	return nil
 }
 
@@ -30,9 +32,10 @@ type User struct {
 
 type Category struct {
 	Base
-	Name             string            `json:"name"`
-	Type             string            `json:"type"`
-	TransactionItems []TransactionItem `gorm:"foreignKey:CategoryID"`
+	Name string `json:"name"`
+	Type string `json:"type"`
+
+	TransactionItems []TransactionItem `gorm:"foreignKey:CategoryID" json:"-"`
 }
 
 type Transaction struct {
@@ -64,16 +67,17 @@ type TransactionMember struct {
 type TransactionItem struct {
 	Base
 	TransactionID uuid.UUID   `gorm:"type:uuid" json:"transaction_id"`
-	CategoryID    uuid.UUID   `gorm:"type:uuid" json:"category_id"`
 	ItemName      string      `json:"item_name"`
 	Qty           int         `gorm:"default:1" json:"qty"`
 	Price         float64     `gorm:"type:decimal(10,2)" json:"price"`
 	Splits        []ItemSplit `gorm:"foreignKey:ItemID;constraint:OnDelete:CASCADE;" json:"splits"`
+
+	CategoryID *uuid.UUID `gorm:"type:uuid" json:"category_id"`
+	Category   Category   `gorm:"foreignKey:CategoryID" json:"category"`
 }
 
 type ItemSplit struct {
 	Base
-	ItemID     uuid.UUID `gorm:"type:uuid" json:"item_id"`
-	MemberID   uuid.UUID `gorm:"type:uuid" json:"member_id"`
-	AmountOwed float64   `gorm:"type:decimal(10,2)" json:"amount_owed"`
+	ItemID   uuid.UUID `gorm:"type:uuid" json:"item_id"`
+	MemberID uuid.UUID `gorm:"type:uuid" json:"member_id"`
 }
