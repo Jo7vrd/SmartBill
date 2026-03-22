@@ -1,6 +1,6 @@
 import { Home as HomeIcon, History } from 'lucide-react'
 
-export type ScreenType = 'home' | 'scan' | 'recap'
+export type ScreenType = 'home' | 'scan' | 'recap' | 'guest'
 
 interface Props {
     activeScreen: ScreenType

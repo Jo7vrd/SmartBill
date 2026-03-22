@@ -6,6 +6,7 @@ import BottomNav from './components/BottomNav'
 import type { ScreenType } from './components/BottomNav'
 import { authService } from './services/authService'
 import AuthPage from './components/AuthPage'
+import GuestPage from './components/GuestPage'
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenType>('home')
@@ -13,11 +14,18 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
 
+  const [unauthScreen, setUnauthScreen] = useState<'auth' | 'guest'>('auth')
+
   useEffect(() => {
     const checkLoginStatus = () => {
       const user = authService.getUser()
       setIsAuthenticated(!!user)
       setIsCheckingAuth(false)
+
+      const urlParams = new URLSearchParams(window.location.search)
+      if (!user && urlParams.get('room')) {
+        setUnauthScreen('guest')
+      }
     }
 
     checkLoginStatus()
@@ -32,11 +40,20 @@ export default function App() {
   }
 
   if (!isAuthenticated) {
-    return <AuthPage onLoginSuccess={() => setIsAuthenticated(true)} />
+    if (unauthScreen === 'guest') {
+      return <GuestPage onBackToLogin={() => setUnauthScreen('auth')} />
+    }
+
+    return (
+      <AuthPage
+        onLoginSuccess={() => setIsAuthenticated(true)}
+        onGuestClick={() => setUnauthScreen('guest')}
+      />
+    )
   }
+
   return (
     <div className="bg-[#f7f9f8] min-h-screen relative">
-
       {screen === 'home' && <Home />}
       {screen === 'recap' && <RecapPage onBack={() => setScreen('home')} />}
       {screen === 'scan' && (
@@ -47,7 +64,6 @@ export default function App() {
       )}
 
       <BottomNav activeScreen={screen} onNavigate={setScreen} />
-
     </div>
   )
 }
