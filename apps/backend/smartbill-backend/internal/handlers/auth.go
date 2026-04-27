@@ -13,7 +13,9 @@ import (
 func Register(c *fiber.Ctx) error {
 	type RegisterInput struct {
 		Name     string `json:"name"`
+		Username string `json:"username"`
 		Email    string `json:"email"`
+		Phone    string `json:"phone"`
 		Password string `json:"password"`
 	}
 
@@ -22,7 +24,7 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(400).JSON(fiber.Map{"error": "Format input salah, cuy!"})
 	}
 
-	user, err := services.CreateUser(input.Name, input.Email, input.Password)
+	user, err := services.CreateUser(input.Name, input.Username, input.Email, input.Phone, input.Password)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": err.Error()})
 	}

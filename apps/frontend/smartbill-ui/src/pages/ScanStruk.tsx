@@ -45,7 +45,7 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
             const reader = new FileReader()
             reader.onloadend = () => {
                 const base64String = reader.result as string
-                onCapture(base64String) // Langsung kirim ke fungsi utama!
+                onCapture(base64String) 
             }
             reader.readAsDataURL(file)
         }

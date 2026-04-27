@@ -2,11 +2,13 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import svgr from 'vite-plugin-svgr'
 
 export default defineConfig({
   plugins: [
     tailwindcss(),
     react(),
+    svgr(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
@@ -50,7 +52,8 @@ export default defineConfig({
     allowedHosts: [
       'pope-objectives-strips-hiking.trycloudflare.com',
       '192.168.1.108',
-      'smartbill.shahwul.men'
+      'smartbill.shahwul.men',
+      '192.168.18.177'
     ]
   }
 })

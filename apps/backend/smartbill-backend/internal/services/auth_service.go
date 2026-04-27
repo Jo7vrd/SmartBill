@@ -16,7 +16,7 @@ func CheckPasswordHash(password, hash string) bool {
 	return err == nil
 }
 
-func CreateUser(name, email, password string) (*models.User, error) {
+func CreateUser(name, username, email, phone, password string) (*models.User, error) {
 	hashedPassword, err := HashPassword(password)
 	if err != nil {
 		return nil, err
@@ -24,7 +24,9 @@ func CreateUser(name, email, password string) (*models.User, error) {
 
 	user := &models.User{
 		Name:     name,
+		Username: username,
 		Email:    email,
+		Phone:    phone,
 		Password: hashedPassword,
 	}
 

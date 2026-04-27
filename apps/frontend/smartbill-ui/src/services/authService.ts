@@ -16,11 +16,11 @@ export const authService = {
         throw new Error(data.error || 'Gagal login')
     },
 
-    register: async (name: string, email: string, password: string) => {
+    register: async (name: string, username: string, email: string, phone: string, password: string) => {
         const res = await fetch(`${API_URL}/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, email, password })
+            body: JSON.stringify({ name, username, email, phone, password })
         })
         const data = await res.json()
         if (res.ok) {

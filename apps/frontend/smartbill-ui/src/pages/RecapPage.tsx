@@ -88,7 +88,7 @@ export default function RecapPage({ onBack }: RecapPageProps) {
                 </button>
                 <div className="text-center mt-6">
                     <p className="text-xs font-medium opacity-70 uppercase tracking-widest mb-1">Pengeluaranmu</p>
-                    <h1 className="font-serif text-3xl font-bold">{namaBulan}</h1>
+                    <h1 className="font-sans text-4xl font-bold">{namaBulan}</h1>
                     <p className="text-4xl font-mono font-bold mt-3">
                         Rp {isLoading ? "..." : (totalPengeluaran / 1000).toLocaleString('id-ID')}k
                     </p>
