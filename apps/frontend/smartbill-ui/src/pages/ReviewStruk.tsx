@@ -29,7 +29,7 @@ export default function ReviewStruk({ initialData, onCancel, onSave }: Props) {
     return (
         <div className="flex flex-col h-dvh bg-[#f7f9f8] text-dark">
             {/* Header */}
-            <div className="bg-white px-6 pt-6 pb-4 shadow-sm flex justify-between items-center z-10">
+            <div className="bg-white px-6 pt-4 pb-4 shadow-sm flex justify-between items-center z-10">
                 <button onClick={onCancel} className="p-2 -ml-2 text-dark/60 active:scale-95">
                     <X size={24} />
                 </button>
