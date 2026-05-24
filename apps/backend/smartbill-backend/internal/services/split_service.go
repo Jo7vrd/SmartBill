@@ -55,6 +55,11 @@ func ProcessLiveAction(msg websocket.WSMessage) error {
 			Where("id = ?", msg.ItemID).
 			Update("price", msg.Price).Error
 
+	case "edit_item_qty":
+		return models.DB.Model(&models.TransactionItem{}).
+			Where("id = ?", msg.ItemID).
+			Update("qty", msg.Qty).Error
+
 	case "add_item":
 		var room models.Transaction
 		if err := models.DB.Where("room_code = ?", msg.RoomCode).First(&room).Error; err != nil {
