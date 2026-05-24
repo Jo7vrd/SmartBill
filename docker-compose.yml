@@ -46,6 +46,16 @@ services:
     depends_on:
       - backend
 
+  # 🌟 TAMBAHAN: Engine LLM Lokal
+  ollama-engine:
+    image: ollama/ollama:latest
+    container_name: smartbill-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
   ai-worker:
     build:
       context: ./apps/ai-worker
@@ -55,6 +65,9 @@ services:
       - "8000:8000"
     volumes:
       - ./apps/ai-worker:/app
+    depends_on:
+      - ollama-engine # 🌟 AI Worker bakal nunggu Ollama jalan duluan
 
 volumes:
   db_data:
+  ollama_data: # 🌟 TAMBAHAN: Biar file model Qwen nggak hilang pas restart

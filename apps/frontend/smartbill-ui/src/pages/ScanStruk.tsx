@@ -11,6 +11,25 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
     const webcamRef = useRef<Webcam>(null)
     const fileInputRef = useRef<HTMLInputElement>(null)
     const [flashOn, setFlashOn] = useState(false)
+    
+    // 🌟 State buat nyimpen rasio layar HP lu
+    const [aspectRatio, setAspectRatio] = useState<number>(16 / 9) // Default aja
+
+    useEffect(() => {
+        // 🌟 Ngitung rasio layar sesungguhnya pas komponen dimuat
+        // Mobile posisinya portrait, jadi kita hitung Tinggi / Lebar
+        const calculateRatio = () => {
+            if (typeof window !== 'undefined') {
+                const height = window.innerHeight
+                const width = window.innerWidth
+                setAspectRatio(height / width)
+            }
+        }
+        
+        calculateRatio()
+        window.addEventListener('resize', calculateRatio)
+        return () => window.removeEventListener('resize', calculateRatio)
+    }, [])
 
     useEffect(() => {
         const toggleTorch = async () => {
@@ -27,7 +46,7 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
                             } as any)
                         } else if (flashOn) {
                             alert("Yah, Flash nggak didukung di kamera ini cuy.")
-                            setFlashOn(false) // Matiin lagi state-nya
+                            setFlashOn(false)
                         }
                     } catch (err) {
                         console.error("Gagal nyalain flash:", err)
@@ -52,6 +71,7 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
     }
 
     const capture = useCallback(() => {
+        // Tangkap gambar sesuai rasio yang udah dikunci
         const imageSrc = webcamRef.current?.getScreenshot()
         if (imageSrc) onCapture(imageSrc)
     }, [onCapture])
@@ -64,7 +84,12 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
                 audio={false}
                 ref={webcamRef}
                 screenshotFormat="image/jpeg"
-                videoConstraints={{ facingMode: 'environment' }}
+                // 🌟 Masukin rasio layar ke dalam videoConstraints
+                videoConstraints={{ 
+                    facingMode: 'environment',
+                    aspectRatio: aspectRatio 
+                }}
+                // Class object-cover tetep dipakai biar visualnya full screen
                 className="absolute inset-0 w-full h-full object-cover opacity-80"
             />
 
@@ -121,7 +146,6 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
                 {/* Bottom Controls */}
                 <div className="pb-10 pt-6 px-10 flex justify-between items-center">
 
-                    {/* Input File Rahasia (Disembunyikan) */}
                     <input
                         type="file"
                         accept="image/*"
@@ -130,7 +154,6 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
                         onChange={handleFileUpload}
                     />
 
-                    {/* Tombol Buka Galeri */}
                     <button
                         onClick={() => fileInputRef.current?.click()}
                         className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center active:scale-95 transition-transform hover:bg-white/20"
@@ -138,7 +161,6 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
                         <ImageIcon size={20} />
                     </button>
 
-                    {/* Shutter */}
                     <button
                         onClick={capture}
                         className="w-20 h-20 rounded-full flex items-center justify-center active:scale-90 transition-transform"

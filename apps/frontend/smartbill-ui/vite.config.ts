@@ -53,7 +53,8 @@ export default defineConfig({
       'pope-objectives-strips-hiking.trycloudflare.com',
       '192.168.1.108',
       'smartbill.shahwul.men',
-      '192.168.18.177'
+      '192.168.18.177',
+      'fixed-bookstore-assure-engineering.trycloudflare.com'
     ]
   }
 })
