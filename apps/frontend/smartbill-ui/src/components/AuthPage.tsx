@@ -6,7 +6,6 @@ import { authService } from '../services/authService'
 export default function AuthPage({ onLoginSuccess, onGuestClick }: { onLoginSuccess: () => void, onGuestClick?: () => void }) {
     const [isLogin, setIsLogin] = useState(true)
     const [name, setName] = useState('')
-    // 🌟 Tambahin state buat username dan phone (sesuai authService lu)
     const [username, setUsername] = useState('') 
     const [phone, setPhone] = useState('')
     const [email, setEmail] = useState('')
