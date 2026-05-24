@@ -6,6 +6,9 @@ import { authService } from '../services/authService'
 export default function AuthPage({ onLoginSuccess, onGuestClick }: { onLoginSuccess: () => void, onGuestClick?: () => void }) {
     const [isLogin, setIsLogin] = useState(true)
     const [name, setName] = useState('')
+    // 🌟 Tambahin state buat username dan phone (sesuai authService lu)
+    const [username, setUsername] = useState('') 
+    const [phone, setPhone] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [error, setError] = useState('')
@@ -19,7 +22,8 @@ export default function AuthPage({ onLoginSuccess, onGuestClick }: { onLoginSucc
             if (isLogin) {
                 await authService.login(email, password)
             } else {
-                await authService.register(name, email, password)
+                // 🌟 Update parameter register sesuai authService.ts lu
+                await authService.register(name, username, email, phone, password)
             }
             onLoginSuccess()
         } catch (err: any) {
@@ -71,17 +75,43 @@ export default function AuthPage({ onLoginSuccess, onGuestClick }: { onLoginSucc
                 {/* Form */}
                 <div className="space-y-3">
                     {!isLogin && (
-                        <div>
-                            <label className="block text-xs font-semibold text-dark/50 mb-1.5 ml-0.5">Nama Panggilan</label>
-                            <input
-                                type="text"
-                                required
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-white border border-black/10 text-dark text-sm rounded-xl px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-dark/25"
-                                placeholder="Budi"
-                            />
-                        </div>
+                        <>
+                            <div>
+                                <label className="block text-xs font-semibold text-dark/50 mb-1.5 ml-0.5">Nama Panggilan</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={name}
+                                    onChange={(e) => setName(e.target.value)}
+                                    className="w-full bg-white border border-black/10 text-dark text-sm rounded-xl px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-dark/25"
+                                    placeholder="Budi Setiawan"
+                                />
+                            </div>
+                            {/* 🌟 Tambahan input Username */}
+                            <div>
+                                <label className="block text-xs font-semibold text-dark/50 mb-1.5 ml-0.5">Username</label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="w-full bg-white border border-black/10 text-dark text-sm rounded-xl px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-dark/25"
+                                    placeholder="budistwn"
+                                />
+                            </div>
+                            {/* 🌟 Tambahan input Phone */}
+                            <div>
+                                <label className="block text-xs font-semibold text-dark/50 mb-1.5 ml-0.5">Nomor WA</label>
+                                <input
+                                    type="tel"
+                                    required
+                                    value={phone}
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    className="w-full bg-white border border-black/10 text-dark text-sm rounded-xl px-4 py-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-dark/25"
+                                    placeholder="081234567890"
+                                />
+                            </div>
+                        </>
                     )}
                     <div>
                         <label className="block text-xs font-semibold text-dark/50 mb-1.5 ml-0.5">Email</label>
