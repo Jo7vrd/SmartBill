@@ -15,7 +15,6 @@ export default function ReviewStruk({ initialData, onCancel, onSave }: Props) {
         const newItems = [...data.items]
         newItems[index] = { ...newItems[index], [field]: value }
         
-        // Total = (Price * Qty) per item, baru ditambah tax
         const subTotal = newItems.reduce((acc, item) => acc + (item.price * (item.qty || 1)), 0)
         const newTotal = subTotal + data.tax
         

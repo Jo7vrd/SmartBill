@@ -11,6 +11,7 @@ export default function Home() {
 
   const [bills, setBills] = useState<Bill[]>([])
   const [myDebt, setMyDebt] = useState(0)
+  const [realTotalUnpaid, setRealTotalUnpaid] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
 
   const currentUser = authService.getUser()
@@ -19,14 +20,15 @@ export default function Home() {
   const [isJoining, setIsJoining] = useState(false)
   const [roomCodeInput, setRoomCodeInput] = useState('')
 
-  const loadBills = async () => {
+const loadBills = async () => {
     setIsLoading(true)
 
     const userHistory = await fetchUserBills()
-    setBills(userHistory)
+    let updatedHistory = [...userHistory]
 
     const activeRooms = userHistory.filter(b => b.status === 'splitting')
     let totalHutangku = 0
+    let totalTagihanAktifSemua = 0
 
     if (activeRooms.length > 0 && currentUser?.id) {
       const fullActiveBills = await Promise.all(
@@ -36,6 +38,19 @@ export default function Home() {
       fullActiveBills.forEach(fullBill => {
         if (!fullBill) return
 
+        const currentRoomTotal = fullBill.items.reduce((acc, item) => {
+            return acc + (item.price * (item.qty || 1))
+        }, 0)
+        totalTagihanAktifSemua += currentRoomTotal
+
+        const historyIndex = updatedHistory.findIndex(b => b.roomCode === fullBill.roomCode)
+        if (historyIndex !== -1) {
+            updatedHistory[historyIndex] = {
+                ...updatedHistory[historyIndex],
+                amount: currentRoomTotal
+            }
+        }
+
         const me = fullBill.members.find(m => m.userId === currentUser.id)
 
         if (me && !me.hasPaid) {
@@ -43,7 +58,8 @@ export default function Home() {
 
           fullBill.items.forEach(item => {
             if (item.assignedTo.includes(me.id)) {
-              utangDiRoomIni += item.price / item.assignedTo.length
+                const totalItemPrice = item.price * (item.qty || 1)
+                utangDiRoomIni += totalItemPrice / item.assignedTo.length
             }
           })
 
@@ -52,7 +68,9 @@ export default function Home() {
       })
     }
 
+    setBills(updatedHistory) 
     setMyDebt(totalHutangku)
+    setRealTotalUnpaid(totalTagihanAktifSemua)
     setIsLoading(false)
   }
 
@@ -70,12 +88,10 @@ export default function Home() {
   }
 
   const activeBills = bills.filter(b => b.status === 'splitting')
-  const totalUnpaid = activeBills.reduce((sum, bill) => sum + bill.amount, 0)
 
   return (
     <div className="min-h-screen bg-white font-sans">
 
-      {/* Navbar */}
       <div className="relative flex justify-center items-center px-6 pt-8 pb-3">
         <span className="text-[30px] font-serif font-bold tracking-tight">SmartBill</span>
         <div className="absolute right-6 w-10 h-10 rounded-full bg-[#1a5336] flex items-center justify-center text-white text-sm font-bold shadow-md cursor-pointer" onClick={() => {
@@ -85,17 +101,16 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Hero Card */}
       <div className="mx-4 bg-[#1a5336] rounded-2xl p-5 text-white relative overflow-hidden shadow-lg shadow-emerald-900/20">
         <p className="text-[11px] font-medium opacity-70 uppercase tracking-wide mb-1">
-          Total yang belum dibayar
+          Total Tagihan Splitting Aktif
         </p>
         <p className="font-serif text-4xl font-bold tracking-tight mb-4">
-          Rp <span className="font-mono">{totalUnpaid.toLocaleString('id-ID')}</span>
+          Rp <span className="font-mono">{realTotalUnpaid.toLocaleString('id-ID')}</span>
         </p>
         <div className="flex gap-3">
           <div className="flex-1 bg-white/10 rounded-xl p-3">
-            <p className="text-[10px] opacity-65 uppercase tracking-wide mb-1">Kamu bayar</p>
+            <p className="text-[10px] opacity-65 uppercase tracking-wide mb-1">Hutangku</p>
             <p className="font-mono font-medium text-base">
               Rp {myDebt > 0 ? (myDebt / 1000).toLocaleString('id-ID') + 'k' : '0'}
             </p>
@@ -107,7 +122,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Section Gabung Room */}
       <div className="px-4 mt-6">
         {isJoining ? (
           <div className="flex items-center gap-2 p-1.5 bg-gray-50 border border-[#1a5336]/30 rounded-2xl shadow-inner animate-fade-in">
@@ -157,7 +171,6 @@ export default function Home() {
         )}
       </div>
 
-      {/* Tagihan Terbaru */}
       <div className="px-4 mt-5 pb-28">
         <div className="flex justify-between items-center mb-3">
           <h2 className="text-[15px] font-semibold text-gray-800">Tagihan Terbaru</h2>
@@ -184,7 +197,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Sheet Modal */}
       <BillDetailSheet
         bill={selectedBill}
         onClose={() => { setSelectedBill(null); loadBills() }}

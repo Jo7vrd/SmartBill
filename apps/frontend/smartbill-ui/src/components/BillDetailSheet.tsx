@@ -101,9 +101,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
 
     const memberTotals = members.map((m) => {
         const total = items.reduce((acc, item) => {
-            // Cek apakah member ini ada di daftar assignedTo
             if (item.assignedTo.includes(m.id)) {
-                // Price = Harga Satuan, Qty = Jumlah barang
                 const totalItemPrice = item.price * (item.qty || 1); 
                 return acc + Math.round(totalItemPrice / item.assignedTo.length);
             }
@@ -348,9 +346,14 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                                 Rp {(item.price * (item.qty || 1)).toLocaleString('id-ID')}
                                             </span>
                                             {isMeHost && (
+                                                <div className="flex flex-col gap-1">
+                                                <button onClick={() => startEdit(item)} className="p-1 text-dark/30 hover:text-primary">
+                                                    <Edit2 className="w-4 h-4" />
+                                                </button>
                                                 <button onClick={() => deleteItemWS(item.id)} className="p-1 text-dark/30 hover:text-red-500">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
+                                            </div>
                                             )}
                                         </>
                                     )}
