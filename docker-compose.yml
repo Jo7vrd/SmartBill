@@ -61,6 +61,8 @@ services:
       context: ./apps/ai-worker
       dockerfile: Dockerfile
     container_name: smartbill-ai-worker
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     volumes:

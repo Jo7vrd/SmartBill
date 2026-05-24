@@ -1,98 +1,80 @@
 import os
-os.environ["KMP_DUPLICATE_LIB_OK"] = "True"
-
+import json
+import google.generativeai as genai
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from paddleocr import PaddleOCR
-from ollama import Client  # 🌟 Import Client khusus buat custom host
-import base64
-import cv2
-import numpy as np
-import json
 
 app = FastAPI()
 
-# 1. Inisialisasi PaddleOCR (Golden Standard)
-ocr = PaddleOCR(use_angle_cls=True, lang='en', use_mkldnn=False)
+# Ambil API Key dari Environment Variable Docker
+GOOGLE_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GOOGLE_API_KEY:
+    print("⚠️ WARNING: GEMINI_API_KEY belum diset!")
 
-# 2. Inisialisasi Ollama Client (Nembak ke container sebelah)
-# Hostname ngikutin nama service di docker-compose.yml
-ollama_client = Client(host='http://ollama-engine:11434')
+genai.configure(api_key=GOOGLE_API_KEY)
 
-class ScanRequest(BaseModel):
+model = genai.GenerativeModel('gemini-2.5-flash')
+
+class ReceiptRequest(BaseModel):
     image: str
 
 @app.post("/extract")
-async def extract_receipt(req: ScanRequest):
+async def extract_receipt(req: ReceiptRequest):
     try:
-        # --- FASE 1: COMPUTER VISION (PADDLEOCR) ---
-        img_data = base64.b64decode(req.image.split(",")[1] if "," in req.image else req.image)
-        np_arr = np.frombuffer(img_data, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        # 1. Bersihkan base64 string kalau ada prefix 'data:image/jpeg;base64,'
+        base64_str = req.image
+        if "," in base64_str:
+            base64_str = base64_str.split(",")[1]
 
-        if img is None:
-            raise HTTPException(status_code=400, detail="Gambarnya rusak cuy")
+        # 2. Siapkan payload gambar buat Gemini
+        image_part = {
+            "mime_type": "image/jpeg",
+            "data": base64_str
+        }
 
-        result = ocr.ocr(img, cls=True)
+        # 3. Prompt ketat biar Gemini ga banyak bacot dan cuma ngeluarin JSON
+        prompt = """
+        Kamu adalah sistem OCR kasir pintar. Ekstrak data dari gambar struk ini. 
+        Keluarkan HANYA output berformat JSON murni tanpa awalan/akhiran apapun (jangan gunakan ```json).
         
-        raw_text_list = []
-        if result is not None:
-            for idx in range(len(result)):
-                res = result[idx]
-                if res is not None:
-                    for line in res:
-                        text = line[1][0]
-                        raw_text_list.append(text)
-
-        full_raw_text = "\n".join(raw_text_list)
-
-        # --- FASE 2: NATURAL LANGUAGE PROCESSING (OLLAMA QWEN2) ---
-        prompt = f"""
-        Lu adalah asisten kasir otomatis. Ekstrak data struk belanja berikut menjadi JSON.
-        Abaikan informasi yang tidak penting seperti alamat, password wifi, atau nomor meja.
-        Jika qty tidak tertulis, asumsikan 1.
-        
-        TUGAS TAMBAHAN:
-        Klasifikasikan setiap item ke dalam SALAH SATU dari kategori wajib berikut:
-        ["Makan", "Belanja", "Kebersihan", "Tagihan", "Kesehatan", "Hiburan", "Pendidikan", "Transportasi", "Lain-lain"]
-        Jika bingung atau tidak yakin, masukkan ke kategori "Lain-lain".
-        
-        WAJIB kembalikan dengan struktur JSON persis seperti ini:
-        {{
-            "merchant_name": "Nama Toko",
+        Gunakan struktur JSON persis seperti ini:
+        {
+            "merchant_name": "Nama Toko/Restoran",
             "items": [
-                {{
-                    "item_name": "Nama Makanan", 
-                    "qty": 2, 
-                    "price": 40000, 
-                    "category_name": "Makan"
-                }}
+                {
+                    "item_name": "Nama Menu/Barang", 
+                    "qty": 1, 
+                    "price": 15000, 
+                    "category_name": "Pilih salah satu: Makan, Belanja, Kebersihan, Tagihan, Kesehatan, Hiburan, Pendidikan, Transportasi, Lain-lain"
+                }
             ],
-            "tax": 7700,
-            "grand_total": 84700
-        }}
-
-        Teks Struk Mentah:
-        {full_raw_text}
+            "tax": 0,
+            "grand_total": 15000
+        }
+        Jika tax (pajak/layanan) tidak ditemukan, isi dengan 0. Pastikan price adalah harga satuan dikali qty.
         """
 
-        # Panggil LLM lokal dengan format JSON murni
-        response = ollama_client.chat(model='qwen2:1.5b', messages=[
-            {
-                'role': 'user',
-                'content': prompt
-            }
-        ], format='json')
+        # 4. Tembak ke Google API
+        response = model.generate_content([image_part, prompt])
         
-        # Parsing string JSON dari Ollama ke dictionary
-        structured_data = json.loads(response['message']['content'])
+        # 5. Parsing text dari Gemini jadi JSON object python
+        raw_text = response.text.strip()
+        
+        # Jaga-jaga kalau Gemini iseng ngasih backtick markdown
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:]
+        if raw_text.endswith("```"):
+            raw_text = raw_text[:-3]
+            
+        parsed_data = json.loads(raw_text)
 
+        # 6. Return persis kayak format AI Worker lu sebelumnya
         return {
             "status": "success",
-            "message": "Struk berhasil di-parsing full lokal via Docker!",
-            "data": structured_data
+            "message": "Berhasil ekstrak pakai Gemini cuy!",
+            "data": parsed_data
         }
 
     except Exception as e:
-        print(f"Error njir: {e}")
+        print(f"Error AI: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

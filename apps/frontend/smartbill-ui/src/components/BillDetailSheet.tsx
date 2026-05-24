@@ -37,8 +37,8 @@ interface Props {
 export default function BillDetailSheet({ bill, onClose }: Props) {
     const { items, members, roomCode,
         addMember, togglePaidWS, editMemberWS, deleteMemberWS,
-        toggleClaim, deleteItemWS, addItemWS, updateItemCategory, updateItemNameWS, updateItemPriceWS,
-        lockRoom } = useLiveSplit(bill)
+        toggleClaim, deleteItemWS, addItemWS, updateItemCategory, updateItemNameWS, 
+        updateItemPriceWS, updateItemQtyWS, lockRoom } = useLiveSplit(bill)
 
 
     const currentUser = authService.getUser()
@@ -48,6 +48,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
     const [editingId, setEditingId] = useState<string | null>(null)
     const [editingName, setEditingName] = useState('')
     const [editingPrice, setEditingPrice] = useState<number | string>('')
+    const [editingQty, setEditingQty] = useState<number | string>('')
 
     const [copied, setCopied] = useState(false)
     const [isAddingMember, setIsAddingMember] = useState(false)
@@ -70,6 +71,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
         setEditingId(item.id)
         setEditingName(item.name)
         setEditingPrice(item.price)
+        setEditingQty(item.qty)
     }
 
     const saveEdit = () => {
@@ -83,6 +85,10 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
             if (!isNaN(numPrice) && originalItem?.price !== numPrice) {
                 updateItemPriceWS(editingId, numPrice)
             }
+            const numQty = Number(editingQty)
+            if (!isNaN(numQty) && originalItem?.qty !== numQty) {
+                updateItemQtyWS(editingId, numQty)
+            }
         }
         setEditingId(null)
     }
@@ -95,8 +101,11 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
 
     const memberTotals = members.map((m) => {
         const total = items.reduce((acc, item) => {
+            // Cek apakah member ini ada di daftar assignedTo
             if (item.assignedTo.includes(m.id)) {
-                return acc + Math.round(item.price / item.assignedTo.length)
+                // Price = Harga Satuan, Qty = Jumlah barang
+                const totalItemPrice = item.price * (item.qty || 1); 
+                return acc + Math.round(totalItemPrice / item.assignedTo.length);
             }
             return acc
         }, 0)
@@ -272,13 +281,13 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                     </div>
 
                     {/* Item list */}
+{/* Item list */}
                     <div className="mt-2.5">
                         {items.map((item) => (
-                            <div key={item.id} className="py-2 border-b border-black/5 last:border-0">
-
-                                {/* Baris atas: emoji + nama + harga + aksi */}
-                                <div className="flex items-center gap-3 mb-1.5">
-
+                            <div key={item.id} className="py-3 border-b border-black/5 last:border-0">
+                                
+                                {/* Baris atas: Kategori + Nama + Harga + Aksi */}
+                                <div className="flex items-center gap-3 mb-2">
                                     {/* Icon kategori */}
                                     <div className="relative shrink-0">
                                         <div className="w-8 h-8 rounded-xl bg-black/5 flex items-center justify-center text-dark/60">
@@ -303,7 +312,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                         )}
                                     </div>
 
-                                    {/* Nama — mode edit vs view */}
+                                    {/* Edit / View Mode */}
                                     {editingId === item.id ? (
                                         <div className="flex-1 flex gap-2 min-w-0">
                                             <input
@@ -311,77 +320,55 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                                                 value={editingName}
                                                 onChange={(e) => setEditingName(e.target.value)}
                                                 className="flex-1 min-w-0 text-sm font-medium text-dark bg-white border border-primary/30 rounded-xl px-3 py-1.5 outline-none"
-                                                placeholder="Nama item"
+                                                placeholder="Nama"
+                                            />
+                                            {/* 🌟 Input Qty saat Edit */}
+                                            <input
+                                                type="number"
+                                                value={editingQty} // Pastikan state editingQty ada
+                                                onChange={(e) => setEditingQty(Number(e.target.value))}
+                                                className="w-12 text-center text-sm border border-primary/30 rounded-xl outline-none"
                                             />
                                             <input
                                                 type="number"
                                                 value={editingPrice}
                                                 onChange={(e) => setEditingPrice(e.target.value)}
-                                                onKeyDown={(e) => e.key === 'Enter' && saveEdit()}
-                                                className="w-28 font-mono text-sm text-dark bg-white border border-primary/30 rounded-xl px-3 py-1.5 outline-none"
-                                                placeholder="Harga"
+                                                className="w-20 text-right font-mono text-sm border border-primary/30 rounded-xl px-2 outline-none"
                                             />
-                                            <button
-                                                onClick={saveEdit}
-                                                className="bg-primary text-white text-xs font-bold px-3 rounded-xl active:scale-95 transition-transform flex items-center gap-1"
-                                            >
-                                                <Check className="w-3.5 h-3.5" />
-                                            </button>
+                                            <button onClick={saveEdit} className="bg-primary text-white p-2 rounded-xl"><Check className="w-4 h-4" /></button>
                                         </div>
                                     ) : (
                                         <>
-                                            <span
-                                                className="flex-1 text-sm font-medium text-dark truncate"
-                                                onDoubleClick={() => startEdit(item)}
-                                            >
-                                                {item.name}
-                                            </span>
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                <span className="font-mono text-sm font-medium text-dark/50">
-                                                    {item.price.toLocaleString('id-ID')}
-                                                </span>
-                                                {isMeHost && (
-                                                    <div className="flex gap-1">
-                                                        <button
-                                                            onClick={() => startEdit(item)}
-                                                            className="w-6 h-6 rounded-lg bg-black/5 flex items-center justify-center text-dark/40 hover:text-primary hover:bg-primary/10 transition-all"
-                                                        >
-                                                            <Edit2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => deleteItemWS(item.id)}
-                                                            className="w-6 h-6 rounded-lg bg-black/5 flex items-center justify-center text-dark/40 hover:text-red-500 hover:bg-red-50 transition-all"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                            <div className="flex-1 min-w-0" onDoubleClick={() => startEdit(item)}>
+                                                <p className="text-sm font-bold text-dark truncate">{item.name}</p>
+                                                {/* 🌟 Tampilkan Qty di View Mode */}
+                                                <p className="text-xs text-dark/50">{item.qty || 1} x Rp {item.price.toLocaleString('id-ID')}</p>
                                             </div>
+                                            <span className="font-mono text-sm font-bold text-dark">
+                                                Rp {(item.price * (item.qty || 1)).toLocaleString('id-ID')}
+                                            </span>
+                                            {isMeHost && (
+                                                <button onClick={() => deleteItemWS(item.id)} className="p-1 text-dark/30 hover:text-red-500">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            )}
                                         </>
                                     )}
                                 </div>
 
-                                {/* Baris bawah: avatar klaim */}
+                                {/* Avatar Klaim */}
                                 <div className="flex gap-1.5 pl-11">
-                                    {members.map((m) => {
-                                        const selected = item.assignedTo.includes(m.id)
-                                        return (
-                                            <button
-                                                key={m.id}
-                                                onClick={() => toggleClaim(item.id, m.id)}
-                                                title={m.name}
-                                                className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold transition-all active:scale-90"
-                                                style={{
-                                                    background: selected ? m.color : AVATAR_UNSELECTED,
-                                                    color: selected ? 'white' : '#bbb',
-                                                }}
-                                            >
-                                                {m.initials}
-                                            </button>
-                                        )
-                                    })}
+                                    {members.map((m) => (
+                                        <button
+                                            key={m.id}
+                                            onClick={() => toggleClaim(item.id, m.id)}
+                                            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${item.assignedTo.includes(m.id) ? 'text-white' : 'text-gray-300'}`}
+                                            style={{ background: item.assignedTo.includes(m.id) ? m.color : '#f3f4f6' }}
+                                        >
+                                            {m.initials}
+                                        </button>
+                                    ))}
                                 </div>
-
                             </div>
                         ))}
                     </div>

@@ -192,6 +192,12 @@ export function useLiveSplit(bill: Bill | null) {
         setItems(prev => prev.map(item => item.id === itemId ? { ...item, price: newPrice } : item))
     }, [])
 
+    const updateItemQtyWS = useCallback((itemId: string, newQty: number) => {
+        if (ws.current?.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ action: 'edit_item_qty', item_id: itemId, qty: newQty }))
+        }
+        setItems(prev => prev.map(item => item.id === itemId ? { ...item, qty: newQty } : item))
+    }, [])
 
     // ==========================================
     // ACTIONS: ROOM
@@ -224,7 +230,7 @@ export function useLiveSplit(bill: Bill | null) {
     return {
         items, members, roomCode,
         addMember, togglePaidWS, editMemberWS, deleteMemberWS,
-        toggleClaim, deleteItemWS, addItemWS, updateItemCategory, updateItemNameWS, updateItemPriceWS,
+        toggleClaim, deleteItemWS, addItemWS, updateItemCategory, updateItemNameWS, updateItemPriceWS, updateItemQtyWS,
         lockRoom
     }
 }
