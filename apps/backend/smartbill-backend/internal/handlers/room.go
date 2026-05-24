@@ -49,11 +49,20 @@ func CreateRoom(c *fiber.Ctx) error {
 		return c.Status(404).JSON(fiber.Map{"error": "Akun host tidak ditemukan"})
 	}
 
-	type CreateRoomReq struct {
-		MerchantName string  `json:"merchant_name"`
-		TotalAmount  float64 `json:"total_amount"`
-		TaxAmount    float64 `json:"tax_amount"`
+	type ItemReq struct {
+		ItemName     string  `json:"item_name"`
+		Qty          int     `json:"qty"`
+		Price        float64 `json:"price"`
+		CategoryName string  `json:"category_name"`
 	}
+
+	type CreateRoomReq struct {
+		Name       string    `json:"name"`
+		Items      []ItemReq `json:"items"`
+		Tax        float64   `json:"tax"`
+		GrandTotal float64   `json:"grand_total"`
+	}
+
 	var req CreateRoomReq
 	if err := c.BodyParser(&req); err != nil {
 		return c.Status(400).JSON(fiber.Map{"error": "Format data salah"})
@@ -64,13 +73,16 @@ func CreateRoom(c *fiber.Ctx) error {
 	newRoom := models.Transaction{
 		HostID:        hostUUID,
 		RoomCode:      roomCode,
-		MerchantName:  req.MerchantName,
-		GrandTotal:    req.TotalAmount,
-		TaxAndService: req.TaxAmount,
+		MerchantName:  req.Name,
+		GrandTotal:    req.GrandTotal,
+		TaxAndService: req.Tax,
 		Status:        "splitting",
 	}
 
-	if err := models.DB.Create(&newRoom).Error; err != nil {
+	tx := models.DB.Begin()
+
+	if err := tx.Create(&newRoom).Error; err != nil {
+		tx.Rollback()
 		return c.Status(500).JSON(fiber.Map{"error": "Gagal membuat lobi"})
 	}
 
@@ -81,10 +93,38 @@ func CreateRoom(c *fiber.Ctx) error {
 		IsHost:        true,
 		ColorCode:     assignColor(0),
 	}
-	models.DB.Create(&hostMember)
+
+	if err := tx.Create(&hostMember).Error; err != nil {
+		tx.Rollback()
+		return c.Status(500).JSON(fiber.Map{"error": "Gagal menambahkan host ke lobi"})
+	}
+
+	for _, reqItem := range req.Items {
+		var category models.Category
+
+		if err := tx.Where("name = ?", reqItem.CategoryName).First(&category).Error; err != nil {
+			tx.Where("name = ?", "Lain-lain").First(&category)
+		}
+
+		newItem := models.TransactionItem{
+			TransactionID: newRoom.ID,
+			ItemName:      reqItem.ItemName,
+			Qty:           reqItem.Qty,
+			Price:         reqItem.Price,
+			CategoryID:    &category.ID,
+		}
+
+		if err := tx.Create(&newItem).Error; err != nil {
+			tx.Rollback()
+			return c.Status(500).JSON(fiber.Map{"error": "Gagal menyimpan detail pesanan"})
+		}
+	}
+
+	// Commit semua perubahan ke database kalau sukses
+	tx.Commit()
 
 	return c.Status(201).JSON(fiber.Map{
-		"message":   "Room berhasil dibuat!",
+		"message":   "Room dan pesanan berhasil dibuat!",
 		"room_code": roomCode,
 		"room_id":   newRoom.ID,
 	})

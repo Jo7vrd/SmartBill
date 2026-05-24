@@ -48,3 +48,17 @@ export interface Bill {
   members: Member[]
   items: BillItem[]
 }
+
+export interface ScannedItem {
+    item_name: string;
+    qty: number;
+    price: number;
+    category_name: string;
+}
+
+export interface ScannedData {
+    merchant_name: string;
+    items: ScannedItem[];
+    tax: number;
+    grand_total: number;
+}
