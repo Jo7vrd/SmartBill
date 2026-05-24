@@ -94,11 +94,11 @@ export default function RecapPage({ onBack }: RecapPageProps) {
         <div className="min-h-screen bg-[#f7f9f8] font-sans pb-24">
 
             {/* Header */}
-            <div className="bg-[#1a5336] pt-14 pb-8 px-6 rounded-b-4xl shadow-md text-white relative">
+            <div className="bg-[#1a5336] pb-8 px-6 rounded-b-4xl shadow-md text-white relative">
                 <button onClick={onBack} className="relative z-10 text-white block">
                     <span className="text-5xl">‹</span>
                 </button>
-                <div className="text-center mt-6">
+                <div className="text-center">
                     <p className="text-xs font-medium opacity-70 uppercase tracking-widest mb-1">Pengeluaranmu</p>
                     <h1 className="font-sans text-4xl font-bold">{namaBulan}</h1>
                     <p className="text-4xl font-mono font-bold mt-3">
