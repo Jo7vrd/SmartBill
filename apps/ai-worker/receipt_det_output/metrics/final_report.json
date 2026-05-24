@@ -1,0 +1,45 @@
+{
+  "task": "detect",
+  "run_name": "receipt_det_yolov8n_20260524_1036",
+  "model": "yolov8n.pt",
+  "label_conversion": "polygon_to_bbox",
+  "img_size": 640,
+  "epochs": 50,
+  "patience": 15,
+  "val_ratio": 0.1,
+  "seed": 42,
+  "conf_threshold": 0.25,
+  "started_at": "2026-05-24T10:36:40.304785+00:00",
+  "train_seconds": 428.5,
+  "best_epoch_metrics": {
+    "epoch": 46.0,
+    "time": 363.664,
+    "train/box_loss": 0.28833,
+    "train/cls_loss": 0.1991,
+    "train/dfl_loss": 1.12302,
+    "metrics/precision(B)": 0.99931,
+    "metrics/recall(B)": 1.0,
+    "metrics/mAP50(B)": 0.995,
+    "metrics/mAP50-95(B)": 0.95678,
+    "val/box_loss": 0.37675,
+    "val/cls_loss": 0.25945,
+    "val/dfl_loss": 0.81428,
+    "lr/pg0": 6.8454e-05,
+    "lr/pg1": 6.8454e-05,
+    "lr/pg2": 6.8454e-05
+  },
+  "confidence": {
+    "images": {
+      "test": 43,
+      "valid": 83
+    },
+    "detection_rate": {
+      "test": 1.0,
+      "valid": 1.0
+    },
+    "mean_max_conf": {
+      "test": 0.9448,
+      "valid": 0.9528
+    }
+  }
+}
