@@ -122,7 +122,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
             text += `${member.name}: Rp ${total.toLocaleString('id-ID')} (${status})\n`
         })
 
-        const grandTotal = items.reduce((acc, item) => acc + item.price, 0)
+        const grandTotal = items.reduce((acc, item) => acc + (item.price * (item.qty || 1)), 0)
         text += `\n*Total Semua: Rp ${grandTotal.toLocaleString('id-ID')}*\n`
         text += `Cek detail: https://smartbill.shahwul.men\n`
 
@@ -413,7 +413,7 @@ export default function BillDetailSheet({ bill, onClose }: Props) {
                         <div className="flex justify-between items-center mt-3 pt-3 border-t border-black/10">
                             <span className="font-sans font-bold text-dark">Total</span>
                             <span className="font-mono font-bold text-dark">
-                                {items.reduce((acc, item) => acc + item.price, 0).toLocaleString('id-ID')}
+                                {items.reduce((acc, item) => acc + (item.price * (item.qty || 1)), 0).toLocaleString('id-ID')}
                             </span>
                         </div>
                     </div>
