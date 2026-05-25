@@ -46,7 +46,7 @@ def cv2_to_base64(img):
     _, buffer = cv2.imencode('.jpg', img, [cv2.IMWRITE_JPEG_QUALITY, 85])
     return base64.b64encode(buffer).decode('utf-8')
 
-HF_API_URL = os.environ.get("HF_API_URL")
+HF_API_URL = "https://cheesecz-yolo-receipt.hf.space/predict"
 
 @app.post("/extract")
 async def extract_receipt(req: ReceiptRequest):
@@ -97,38 +97,26 @@ async def extract_receipt(req: ReceiptRequest):
 
         image_part = {"mime_type": "image/jpeg", "data": final_base64}
 
-        prompt = """Analyze this receipt image and return ONLY valid JSON.
-
-        Schema:
+        prompt = """
+        Kamu adalah sistem OCR kasir pintar. Ekstrak data dari gambar struk ini. 
+        Keluarkan HANYA output berformat JSON murni tanpa awalan/akhiran apapun (jangan gunakan ```json).
+        
+        Gunakan struktur JSON persis seperti ini:
         {
-        "merchant_name": string,
-        "items": [
-            {"item_name": string, "qty": number, "price": string, "category_name": string}
-        ],
-        "tax": string,
-        "grand_total": string
+            "merchant_name": "Nama Toko/Restoran",
+            "items": [
+                {
+                    "item_name": "Nama Menu/Barang", 
+                    "qty": 1, 
+                    "price": 15000, 
+                    "category_name": "Pilih salah satu: Makan, Belanja, Kebersihan, Tagihan, Kesehatan, Hiburan, Pendidikan, Transportasi, Lain-lain"
+                }
+            ],
+            "tax": 0,
+            "grand_total": 15000
         }
-
-        Rules:
-        1. merchant_name: use "-" if not found on the receipt.
-        2. category_name: pick ONE overall category for the whole receipt (not per item):
-        - Makan: bahan makanan, minuman, restoran, warung, kafe
-        - Belanja: pakaian, elektronik, aksesori, perabot, hobi
-        - Kebersihan: sabun, detergen, produk perawatan tubuh, alat kebersihan rumah
-        - Tagihan: listrik, air, internet, telepon, asuransi, cicilan
-        - Kesehatan: obat-obatan, suplemen, klinik, apotek, lab
-        - Hiburan: bioskop, streaming, game, konser, wisata
-        - Pendidikan: buku, kursus, les privat, alat tulis, SPP
-        - Transportasi: bensin, parkir, ojek, taksi, tiket, tol
-        - Lain-lain: tidak masuk kategori manapun di atas
-        3. All money values (productPrice, totalPrice, tax, totalPaid) MUST be strings in Indonesian Rupiah format: dot as thousands separator, no "Rp", no decimals unless cents exist.
-        Examples: "18000", "27500", "1250000"
-        Normalize messy input: "18k" -> "18000", "Rp27500" -> "27500", "27500" -> "27500"
-        4. qty: number, default 1 if missing.
-        5. tax: use "0" if no tax on the receipt.
-        6. grand_total: if tax > 0, grand_total = grand_total + tax. If tax is "0", grand_total equals grand_total.
-        Always compute and format grand_total correctly in Rupiah string format.
-        7. Include every purchasable line item you can read."""
+        Jika tax (pajak/layanan) tidak ditemukan, isi dengan 0. Pastikan price adalah harga satuan dikali qty.
+        """
 
         response = gemini_model.generate_content([image_part, prompt])
         raw_text = response.text.strip()
