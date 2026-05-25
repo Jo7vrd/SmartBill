@@ -57,9 +57,8 @@ export default function App() {
     checkLoginStatus()
   }, [])
 
-  // Fungsi buat nembak AI Worker
-  const handleCaptureReceipt = async (base64Image: string) => {
-    setIsProcessingAI(true)
+    const handleCaptureReceipt = async (base64Image: string) => {
+        setIsProcessingAI(true)
     
     try {
       const token = authService.getToken()
@@ -76,17 +75,19 @@ export default function App() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Gagal nge-scan struk')
+        throw new Error(data.detail || data.error || 'Gagal konek ke server AI')
       }
 
+      if (data.status === "error") {
+        alert(`🚨 Woy! ${data.message}`) 
+        return 
+      }
       console.log("🔥 Hasil AI Gacor:", data.data)
-
-      // 🌟 Jangan langsung ke home, masukin data ke state lalu buka layar Review
       setScannedResult(data.data)
       setScreen('review') 
 
     } catch (err: any) {
-      console.error(err)
+      console.error("Gagal nyambung ke server:", err)
       alert(`Error: ${err.message}`)
     } finally {
       setIsProcessingAI(false)
