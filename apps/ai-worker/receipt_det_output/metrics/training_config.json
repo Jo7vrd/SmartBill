@@ -1,0 +1,13 @@
+{
+  "task": "detect",
+  "run_name": "receipt_det_yolov8n_20260524_1036",
+  "model": "yolov8n.pt",
+  "label_conversion": "polygon_to_bbox",
+  "img_size": 640,
+  "epochs": 50,
+  "patience": 15,
+  "val_ratio": 0.1,
+  "seed": 42,
+  "conf_threshold": 0.25,
+  "started_at": "2026-05-24T10:36:40.304785+00:00"
+}
