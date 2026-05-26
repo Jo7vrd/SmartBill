@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy ke Server Proxmox
+    name: Homeserver Auto Deployment
     runs-on: ubuntu-latest
 
     steps:
