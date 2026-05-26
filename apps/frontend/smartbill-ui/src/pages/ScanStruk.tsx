@@ -55,7 +55,6 @@ export default function ScanStruk({ onBack, onCapture }: Props) {
         toggleTorch()
     }, [flashOn])
 
-    // 🌟 FUNGSI NORMALIZER: Nyamain Kualitas Webcam & Galeri
     const processAndStandardizeImage = (dataUrl: string) => {
         const img = new Image()
         img.onload = () => {

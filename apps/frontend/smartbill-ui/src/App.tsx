@@ -35,11 +35,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [unauthScreen, setUnauthScreen] = useState<UnauthScreen>('splash')
-  
-  // State buat nahan layar pas AI lagi mikir
   const [isProcessingAI, setIsProcessingAI] = useState(false)
-  
-  // 🌟 State buat nyimpen hasil tebakan AI sebelum di-save
   const [scannedResult, setScannedResult] = useState<ScannedData | null>(null)
 
   useEffect(() => {
@@ -57,8 +53,8 @@ export default function App() {
     checkLoginStatus()
   }, [])
 
-    const handleCaptureReceipt = async (base64Image: string) => {
-        setIsProcessingAI(true)
+  const handleCaptureReceipt = async (base64Image: string) => {
+    setIsProcessingAI(true)
     
     try {
       const token = authService.getToken()
@@ -79,16 +75,26 @@ export default function App() {
       }
 
       if (data.status === "error") {
-        alert(`🚨 Woy! ${data.message}`) 
-        return 
+        alert(`Alerta! ${data.message}`) 
+        setScreen('home')
+        return
       }
-      console.log("🔥 Hasil AI Gacor:", data.data)
+
+      if (!data.data) {
+        alert(`Alerta! Yang bener aja, foto apa itu. Coba foto ulang cuy!`) 
+        setScreen('home')
+        return
+      }
+
+      console.log("Hasil AI Gacor:", data.data)
       setScannedResult(data.data)
       setScreen('review') 
 
     } catch (err: any) {
       console.error("Gagal nyambung ke server:", err)
-      alert(`Error: ${err.message}`)
+      alert(`Error Sistem: ${err.message}`)
+      // Pastikan kalau gagal sistem juga balik ke home
+      setScreen('home')
     } finally {
       setIsProcessingAI(false)
     }
